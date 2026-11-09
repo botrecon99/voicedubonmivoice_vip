@@ -1,0 +1,12 @@
+AI DUBBING STUDIO - ONE CLICK INSTALL / GIT UPDATE
+
+DOC: README_NEW_PC_VA_UPDATE.md
+GITHUB: https://github.com/botrecon99/voicedubonmivoice_vip.git
+
+OWNER: PUSH FULL SOURCE TO GITHUB FIRST. REPO CURRENTLY EMPTY.
+NEW PC: Double-click INSTALL_NEW_PC.bat (after GitHub has source).
+UPDATE: Close app, double-click UPDATE.bat.
+OPEN APP: START_APP.bat.
+
+LICENSE: Edit license_config.json with REAL Cloudflare Worker URL and enter client key.
+DO NOT COMMIT SECRETS, VIDEO DATA, VOICE DATA OR LOCAL LICENSE.

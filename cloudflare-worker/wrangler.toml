@@ -1,0 +1,9 @@
+name = "ai-dubbing-license"
+main = "src/index.js"
+compatibility_date = "2026-11-09"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ai-dubbing-license-db"
+database_id = "cd08906b-e784-4119-8cfb-de9f3243bc15"
+migrations_dir = "migrations"
