@@ -1,4 +1,4 @@
-﻿﻿#requires -version 5.1
+﻿#requires -version 5.1
 param([string]$SourceDir = '')
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -123,6 +123,12 @@ try {
     Say 'Khong xoa downloaded_data, voices, license hay venv co san.'
     Refresh-Path
     $git = Get-Git
+    # Neu BAT dang nam trong Git clone, tu nhan dien root tu PSScriptRoot.
+    # Khong truyen 'D:\folder\' qua CMD argument de tranh loi quote trailing slash.
+    $candidateRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
+    if ((Test-Path -LiteralPath (Join-Path $candidateRoot '.git')) -and (Test-Path -LiteralPath (Join-Path $candidateRoot 'modern_gui.py'))) {
+        $SourceDir = $candidateRoot
+    }
     $appDir = Target-Dir $SourceDir $git
     Say ('App folder: ' + $appDir)
     $needed = @('modern_gui.py','core.py','role_review_ui.py','speaker_ai.py','license_client.py','license_ui.py','requirements.txt')
@@ -148,6 +154,8 @@ try {
         Say 'Cai Selenium...'
         Run $venvBin @('-m','pip','install','selenium>=4.15,<5')
     }
+    Say 'Cai/kiem tra ffmpeg.exe, ffprobe.exe, yt-dlp.exe va Node.js cho taiok.bat...'
+    Run 'powershell.exe' @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'SETUP_TOOLS.ps1'),'-AppDir',$appDir)
     Say 'Tao va cai AI phan vai Pyannote trong .venv_roles (rieng biet)...'
     $roleBin = Python-Venv $py (Join-Path $appDir '.venv_roles')
     Run $roleBin @('-m','pip','install','--upgrade','pip','setuptools','wheel')

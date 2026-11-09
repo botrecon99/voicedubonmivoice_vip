@@ -11,7 +11,7 @@ echo.
 echo Hay dong AI Dubbing Studio truoc khi cai.
 echo Khong xoa du lieu video / voice / key license.
 echo.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\INSTALL_NEW_PC.ps1" -SourceDir "%~dp0."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\INSTALL_NEW_PC.ps1"
 set "RC=%ERRORLEVEL%"
 echo.
 if "%RC%"=="0" (echo [OK] Cai dat thanh cong.) else (echo [LOI] Cai dat chua xong. Xem log trong LOCALAPPDATA\AI_Dubbing_Studio.)
