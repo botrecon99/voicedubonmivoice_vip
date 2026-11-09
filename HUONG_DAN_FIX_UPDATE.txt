@@ -1,0 +1,35 @@
+FIX UPDATE - Illegal characters in path (Windows)
+=================================================
+
+NGUYEN NHAN:
+UPDATE.bat cu truyen -SourceDir "%~dp0". Vi %~dp0 ket thuc bang dau \,
+Windows/PowerShell co the hieu nham dau ngoac kep cuoi thanh mot phan cua
+chuoi duong dan. Loi xay ra TRUOC khi git pull.
+
+CACH CAI (KHONG CHAY INSTALL TREN MAY DANG DUNG):
+1. DONG AI DUBBING STUDIO.
+2. Giai nen ZIP vao D:\OmniVoice_multi_speaker\ va chap nhan ghi de:
+   UPDATE.bat
+   INSTALL_NEW_PC.bat
+   scripts\UPDATE.ps1
+3. DUNG xoa hay doi thu muc scripts; scripts\INSTALL_NEW_PC.ps1 cu van de nguyen.
+4. Nhan dup UPDATE.bat.
+
+Ban sua cho UPDATE.ps1 tu nhan thu muc goc tu vi tri file script.
+Giu nguyen git pull --ff-only, kiem tra status va backup code,
+KHONG dung git reset, git clean, hay xoa downloaded_data, voices, license.
+
+INSTAL_NEW_PC.bat duoc sua de tranh loi duong dan tuong tu,
+nhung KHONG CAN CHAY lai cai dat tren may dang su dung.
+
+NEU MUON KIEM TRA GIT THU CONG:
+  cd /d D:\OmniVoice_multi_speaker
+  git status --short
+  git pull --ff-only origin main
+
+Log update o %LOCALAPPDATA%\AI_Dubbing_Studio\update_*.log.
+Bai test offline tren Linux: verified packaging/static calls; chua chay
+PowerShell tren Windows thuc te. Neu bao loi moi, gui noi dung log.
+
+CACH DE NHAT: Giai nen ZIP tren Desktop, nhan dup CAI_FIX_UPDATE.bat.
+Sau khi file copy, chay cac lenh Git ma BAT hien ra de commit + push ban sua.
