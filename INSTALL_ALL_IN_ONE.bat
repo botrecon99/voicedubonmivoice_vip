@@ -1,14 +1,15 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 chcp 65001 >nul
-title AI DUBBING - INSTALL ALL IN ONE V6
+title AI DUBBING - INSTALL AI ONLY V7
 color 0B
 echo ==========================================================
-echo      AI DUBBING - INSTALL ALL IN ONE - V6
+echo      AI DUBBING - INSTALL ALL IN ONE - V7
 echo ==========================================================
 echo  1 FILE DUY NHAT: cai tu GitHub hoac source da clone.
-echo  Python 3.12, FFmpeg, yt-dlp, Node, AI, CUDA/CPU, License.
-echo  KHONG xoa video, giong noi, key va moi truong da co.
+echo  Python 3.12 + AI + CUDA/CPU + Pyannote + Selenium + License.
+echo  FFmpeg, ffprobe, yt-dlp, Node.js: BAN TU CAI / COPY.
+echo  KHONG xoa video, voices, key hay moi truong da co.
 echo ==========================================================
 echo.
 set "AI_DUB_INSTALL_SELF=%~f0"
@@ -18,7 +19,7 @@ set "RC=%ERRORLEVEL%"
 echo.
 if "%RC%"=="0" (
   color 0A
-  echo [OK] BO CAI DA HOAN TAT CAC BUOC KIEM TRA.
+  echo [OK] MOI TRUONG AI DA HOAN TAT. EXE NGOAI CAN CHUAN BI THU CONG.
   echo [NEXT] Mo START_APP.bat tai thu muc source, nhap License Key.
 ) else (
   color 0C
@@ -30,7 +31,7 @@ pause
 exit /b %RC%
 #=BEGIN_AI_POWERSHELL=
 #requires -Version 5.1
-# ONE FILE INSTALL V6 - Windows 10/11 x64, PowerShell 5.1+
+# ONE FILE INSTALL V7 - Windows 10/11 x64, PowerShell 5.1+
 # User files and secrets are never deleted. Rerun to resume after network failures.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -45,6 +46,7 @@ $script:App = $null
 $script:TranscriptOn = $false
 $script:MainReady = $false
 $script:RolesReady = $false
+$script:RolesMode = $null
 $script:CUDA = $false
 $script:Warns = New-Object 'System.Collections.Generic.List[string]'
 
@@ -179,7 +181,12 @@ function EnsureGit {
     return $null
 }
 function EnsureProject([string]$git) {
-    $candidates = @($script:Root, 'D:\dub\voicedubonmivoice_vip', 'D:\OmniVoice_multi_speaker', (Join-Path $env:USERPROFILE 'OmniVoice_multi_speaker'))
+    $candidates = @($script:Root, (Join-Path $env:USERPROFILE 'OmniVoice_multi_speaker'))
+    foreach ($drive in (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Root -match '^[A-Za-z]:\\$' })) {
+        $candidates += (Join-Path $drive.Root 'dub\voicedubonmivoice_vip')
+        $candidates += (Join-Path $drive.Root 'OmniVoice_multi_speaker')
+        $candidates += (Join-Path $drive.Root 'voicedubonmivoice_vip')
+    }
     foreach ($folder in ($candidates | Select-Object -Unique)) {
         if ((Test-Path -LiteralPath (Join-Path $folder 'core.py')) -and
             (Test-Path -LiteralPath (Join-Path $folder 'modern_gui.py')) -and
@@ -199,9 +206,9 @@ function EnsureProject([string]$git) {
         Exec $git @('clone','--depth','1',$script:Repo,$dest)
     } else {
         Info 'Chua co Git: thu tai ma nguon ZIP qua HTTPS.'
-        $z=Join-Path $script:Cache 'repo-main-v6.zip'
+        $z=Join-Path $script:Cache 'repo-main-v7.zip'
         Download 'https://github.com/botrecon99/voicedubonmivoice_vip/archive/refs/heads/main.zip' $z
-        $unpack=Join-Path $script:Cache 'unpack_repo_v6'
+        $unpack=Join-Path $script:Cache 'unpack_repo_v7'
         if (Test-Path -LiteralPath $unpack) { Remove-Item -LiteralPath $unpack -Recurse -Force }
         Expand-Archive -LiteralPath $z -DestinationPath $unpack
         $first=Get-ChildItem -LiteralPath $unpack -Directory | Select-Object -First 1
@@ -286,49 +293,6 @@ function CheckImport([string]$py,[string]$expr) {
         $ErrorActionPreference=$old
     }
 }
-function EnsureFFmpeg {
-    $ff=Join-Path $script:App 'ffmpeg.exe'; $probe=Join-Path $script:App 'ffprobe.exe'
-    if ((Test-Path $ff) -and (Test-Path $probe) -and (CheckExecutable $ff @('-version')) -and (CheckExecutable $probe @('-version'))) {
-        Info 'FFmpeg/ffprobe trong thu muc app OK'; return
-    }
-    $binary=Locate 'ffmpeg.exe'
-    if ($binary) {
-        $other=Join-Path (Split-Path -Parent $binary) 'ffprobe.exe'
-        if (Test-Path -LiteralPath $other) {
-            Copy-Item -LiteralPath $binary -Destination $ff -Force
-            Copy-Item -LiteralPath $other -Destination $probe -Force
-        }
-    }
-    if ((Test-Path $ff) -and (Test-Path $probe) -and (CheckExecutable $ff @('-version')) -and (CheckExecutable $probe @('-version'))) { return }
-    try {
-        Info 'Tai FFmpeg/ffprobe package da duoc dong goi...'
-        $archive=Join-Path $script:Cache 'ffmpeg-release-essentials.zip'
-        Download 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip' $archive 1000000
-        $temp=Join-Path $script:Cache 'ffmpeg_extract'
-        if (Test-Path $temp) { Remove-Item -LiteralPath $temp -Recurse -Force }
-        Expand-Archive -LiteralPath $archive -DestinationPath $temp -Force
-        $c=Get-ChildItem -LiteralPath $temp -Filter ffmpeg.exe -File -Recurse | Select-Object -First 1
-        if (-not $c) { throw 'Khong thay ffmpeg.exe trong ZIP' }
-        $p=Join-Path $c.DirectoryName 'ffprobe.exe'
-        if (-not (Test-Path $p)) { throw 'ZIP thieu ffprobe.exe' }
-        Copy-Item -LiteralPath $c.FullName -Destination $ff -Force
-        Copy-Item -LiteralPath $p -Destination $probe -Force
-    } catch {
-        Warning ('FFmpeg truc tiep that bai: ' + $_.Exception.Message + '. Thu winget...')
-        [void](WingetInstall 'Gyan.FFmpeg')
-        PathRefresh
-        $binary=Locate 'ffmpeg.exe'
-        if ($binary) {
-            $other=Join-Path (Split-Path -Parent $binary) 'ffprobe.exe'
-            if (Test-Path -LiteralPath $other) {
-                Copy-Item -LiteralPath $binary -Destination $ff -Force
-                Copy-Item -LiteralPath $other -Destination $probe -Force
-            }
-        }
-    }
-    if (-not (CheckExecutable $ff @('-version')) -or -not (CheckExecutable $probe @('-version'))) { ErrorStop 'FFmpeg / ffprobe chua cai duoc.' }
-    Info 'FFmpeg/ffprobe OK'
-}
 function CheckExecutable([string]$f,[string[]]$arglist) {
     if (-not (Test-Path -LiteralPath $f)) { return $false }
     try {
@@ -336,55 +300,26 @@ function CheckExecutable([string]$f,[string[]]$arglist) {
         return ($LASTEXITCODE -eq 0)
     } catch { return $false }
 }
-function EnsureYtdlp {
-    $exe=Join-Path $script:App 'yt-dlp.exe'
-    if (CheckExecutable $exe @('--version')) { Info 'yt-dlp.exe OK'; return }
-    # Standalone official EXE: no reliance on launcher from different machine/venv.
-    $archive=Join-Path $script:Cache 'yt-dlp.exe'
-    Download 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe' $archive
-    # Validate against official release checksums when available.
-    $sums=Join-Path $script:Cache 'yt-dlp.sha256sums'
-    try {
-        Download 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/SHA2-256SUMS' $sums 256
-        $found=Get-Content -LiteralPath $sums | Where-Object { $_ -match '\s\*?yt-dlp\.exe\s*$' } | Select-Object -First 1
-        if ($found) {
-            $expected=($found -split '\s+')[0].ToLowerInvariant()
-            $actual=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-            if ($expected -ne $actual) { ErrorStop 'SHA256 yt-dlp.exe KHONG KHOP' }
-        } else { Warning 'Khong tim thay checksum yt-dlp.exe, dung TLS HTTPS va test chay.' }
-    } catch {
-        if ($_.Exception.Message -match 'SHA256 yt-dlp.exe KHONG KHOP') { throw }
-        Warning ('Khong tai duoc file checksum yt-dlp: ' + $_.Exception.Message)
-    }
-    Copy-Item -LiteralPath $archive -Destination $exe -Force
-    if (-not (CheckExecutable $exe @('--version'))) { ErrorStop 'yt-dlp.exe khong chay duoc.' }
-    Info 'yt-dlp.exe OK'
-}
-function EnsureNode {
-    $node=Locate 'node.exe' @((Join-Path $env:ProgramFiles 'nodejs\node.exe'),(Join-Path $script:App '.tools\node\node.exe'))
-    if ($node -and (CheckExecutable $node @('--version'))) { Info ('Node OK: ' + $node); return }
-    # A portable node.exe avoids slow/hanging winget installers on 10+ PCs.
-    $nodeDir=Join-Path $script:App '.tools\node'
-    $dest=Join-Path $nodeDir 'node.exe'
-    New-Item -ItemType Directory -Force -Path $nodeDir | Out-Null
-    try {
-        Download 'https://nodejs.org/download/release/latest-v24.x/win-x64/node.exe' $dest 1000000
-        if (-not (CheckExecutable $dest @('--version'))) { throw 'Node portable khong chay duoc.' }
-    } catch {
-        Warning ('Khong lay duoc Node portable: ' + $_.Exception.Message + '. Thu cai winget...')
-        [void](WingetInstall 'OpenJS.NodeJS.LTS')
-        PathRefresh
-        $dest=Locate 'node.exe' @((Join-Path $env:ProgramFiles 'nodejs\node.exe'))
-        if (-not $dest -or -not (CheckExecutable $dest @('--version'))) { ErrorStop 'Node.js chua cai duoc (ca portable va winget deu that bai).' }
-    }
-    $env:PATH = (Split-Path -Parent $dest) + ';' + $env:PATH
-    if ($dest -like ($nodeDir + '*')) {
-        $userPath=[string][Environment]::GetEnvironmentVariable('Path','User')
-        if (([string]$userPath -split ';') -notcontains $nodeDir) {
-            [Environment]::SetEnvironmentVariable('Path',(($userPath.TrimEnd(';') + ';' + $nodeDir).TrimStart(';')),'User')
+# External tools are owned by the user on V7. NEVER download, install, replace, or delete them.
+# The checks are informational: AI environment installation continues even when they are absent.
+function CheckManualTools {
+    $external = @(
+      @{Name='ffmpeg.exe'; Exe='ffmpeg.exe'; Args=@('-version'); Paths=@((Join-Path $script:App 'ffmpeg.exe'))},
+      @{Name='ffprobe.exe'; Exe='ffprobe.exe'; Args=@('-version'); Paths=@((Join-Path $script:App 'ffprobe.exe'))},
+      @{Name='yt-dlp.exe'; Exe='yt-dlp.exe'; Args=@('--version'); Paths=@((Join-Path $script:App 'yt-dlp.exe'))},
+      @{Name='node.exe'; Exe='node.exe'; Args=@('--version'); Paths=@((Join-Path $env:ProgramFiles 'nodejs\node.exe'),(Join-Path $script:App '.tools\node\node.exe'))}
+    )
+    foreach ($tool in $external) {
+        $candidate=Locate $tool.Exe $tool.Paths
+        if ($candidate -and (CheckExecutable $candidate $tool.Args)) {
+            Info ('DA CO (thu cong): ' + $tool.Name + ' -> ' + $candidate)
+        } else {
+            Warning ('CHUA CO ' + $tool.Name + ': BAN TU COPY/CAI. Installer V7 se KHONG tu tai.')
         }
     }
-    Info ('Node OK: ' + $dest)
+    if (-not (Test-Path -LiteralPath (Join-Path $script:App 'yt-dlp.exe'))) {
+        Warning 'taiok.bat co the can yt-dlp.exe nam ngay thu muc goc app, khong chi tren PATH.'
+    }
 }
 function EnsureChrome {
     $paths=@((Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),(Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),(Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe'))
@@ -424,10 +359,13 @@ function EnsureVCRuntime {
 # pyannote.audio can upgrade the previously installed CUDA torch to a newer CPU build.
 function RoleCheck([string]$bin,[string]$mode) {
     $code = @'
-import torch,torchaudio,pyannote.audio
+import torch,torchaudio,pyannote.audio,importlib.metadata as meta
+from packaging.version import Version
+pml=meta.version('pytorch-metric-learning')
+assert Version(pml) < Version('3.0'), 'metric-learning >=3 needs torch>=2.14'
 v=torch.__version__
 a=torchaudio.__version__
-print('ROLES:',v,'TORCHAUDIO:',a,'CUDA_AVAILABLE:',torch.cuda.is_available())
+print('ROLES:',v,'TORCHAUDIO:',a,'PML:',pml,'CUDA_AVAILABLE:',torch.cuda.is_available())
 assert v.startswith('2.11.0+MODE'), 'Torch was changed by pip'
 assert a.startswith('2.11.0+MODE'), 'Torchaudio must match torch'
 if 'MODE' != 'cpu':
@@ -445,7 +383,8 @@ function InstallRolesWithPinnedTorch([string]$bin,[string]$mode) {
     # Both wheels MUST have this exact local build tag (+cu126 or +cpu).
     [IO.File]::WriteAllLines($constraints, [string[]]@(
         ('torch==2.11.0+' + $mode),
-        ('torchaudio==2.11.0+' + $mode)
+        ('torchaudio==2.11.0+' + $mode),
+        'pytorch-metric-learning==2.9.0'
     ), [Text.UTF8Encoding]::new($false))
     Info ('Cai PyTorch 2.11 + ' + $mode + ' cho Pyannote, KHONG sua venv chinh.')
     Exec $bin @('-m','pip','install','torch==2.11.0','torchaudio==2.11.0',
@@ -466,14 +405,15 @@ function InstallRolesWithPinnedTorch([string]$bin,[string]$mode) {
 }
 function EnsureRoles([hashtable]$p,[version]$driver) {
     $bin=EnsureVenv $p '.venv_roles'
-    $ready=Join-Path $script:App '.setup\roles-v6.txt'
+    $ready=Join-Path $script:App '.setup\roles-v7.txt'
     $wantCuda=($null -ne $driver -and $driver -ge [version]'560.35')
     $wanted=if ($wantCuda) { 'cu126' } else { 'cpu' }
     $mode=$wanted
-    $tag=('v6-2.11.0-' + $wanted)
+    $tag=('v7-2.11.0-pml2.9-' + $wanted)
     $already=(Test-Path -LiteralPath $ready) -and ([IO.File]::ReadAllText($ready).Trim() -eq $tag)
     if ($already -and (RoleCheck $bin $wanted)) {
         Info ('Pyannote ' + $wanted + ' da duoc kiem tra, bo qua cai lai.')
+        $script:RolesMode=$wanted
         $script:RolesReady=$true
         return
     }
@@ -488,7 +428,8 @@ function EnsureRoles([hashtable]$p,[version]$driver) {
         InstallRolesWithPinnedTorch $bin 'cpu'
     }
     # Installer marker is written ONLY after complete validation succeeds.
-    [IO.File]::WriteAllText($ready,('v6-2.11.0-' + $mode))
+    [IO.File]::WriteAllText($ready,('v7-2.11.0-pml2.9-' + $mode))
+    $script:RolesMode=$mode
     $script:RolesReady=$true
     Info ('Pyannote ROLES READY: ' + $mode)
 }
@@ -498,7 +439,7 @@ try {
     New-Item -ItemType Directory -Force -Path $script:State,$script:Cache | Out-Null
     Start-Transcript -LiteralPath $script:Log -ErrorAction Stop | Out-Null
     $script:TranscriptOn=$true
-    Write-Host ''; Write-Host 'ONE FILE INSTALLER V6 - WINDOWS 10/11 x64' -ForegroundColor Green
+    Write-Host ''; Write-Host 'ONE FILE INSTALLER V7 - WINDOWS 10/11 x64' -ForegroundColor Green
     Info ('LOG: ' + $script:Log)
     Info ('File bat dang o: ' + $script:Root)
     $rootDrive = [IO.Path]::GetPathRoot($script:Root)
@@ -511,8 +452,8 @@ try {
     foreach ($f in $needed) { if (-not (Test-Path -LiteralPath (Join-Path $script:App $f))) { ErrorStop ('Repo thieu ' + $f) } }
     Step 2 'PYTHON 3.12 x64 (TU DONG CAI)'
     $py=EnsurePython312
-    Step 3 'FFMPEG + FFPROBE + YT-DLP + NODE.JS'
-    EnsureFFmpeg; EnsureYtdlp; EnsureNode
+    Step 3 'TOOLS THU CONG (CHI KIEM TRA, KHONG CAI)'
+    CheckManualTools
     Step 4 'GOOGLE CHROME / SELENIUM'
     EnsureChrome
     Step 5 'MOI TRUONG CHINH (venv)'
@@ -550,16 +491,17 @@ try {
     $folder=Join-Path $script:App 'voices'; if (-not (Test-Path $folder)) { New-Item -ItemType Directory $folder | Out-Null }
     $folder=Join-Path $script:App 'downloaded_data'; if (-not (Test-Path $folder)) { New-Item -ItemType Directory $folder | Out-Null }
     Step 8 'KIEM TRA CUOI CUNG'
-    foreach ($x in @('ffmpeg.exe','ffprobe.exe','yt-dlp.exe','venv\Scripts\python.exe','.venv_roles\Scripts\python.exe','license_config.json')) {
+    foreach ($x in @('venv\Scripts\python.exe','.venv_roles\Scripts\python.exe','license_config.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $script:App $x))) { ErrorStop ('Kiem tra thieu: ' + $x) }
     }
-    if (-not (CheckExecutable (Join-Path $script:App 'ffmpeg.exe') @('-version'))) { ErrorStop 'Test ffmpeg FAIL' }
-    if (-not (CheckExecutable (Join-Path $script:App 'yt-dlp.exe') @('--version'))) { ErrorStop 'Test yt-dlp FAIL' }
-    if (-not (Locate 'node.exe' @((Join-Path $script:App '.tools\node\node.exe'),(Join-Path $env:ProgramFiles 'nodejs\node.exe')))) { ErrorStop 'Test node FAIL' }
     if (-not (CheckImport $venv 'import torch,customtkinter,whisper,omnivoice;print("GPU main:",torch.cuda.is_available())')) { ErrorStop 'Final test main FAIL' }
+    if (-not $script:RolesMode) { ErrorStop 'Khong xac dinh duoc Pyannote CPU/CUDA mode.' }
+    $rolesPython=Join-Path $script:App '.venv_roles\Scripts\python.exe'
+    if (-not (RoleCheck $rolesPython $script:RolesMode)) { ErrorStop 'Final test roles FAIL' }
     [IO.File]::WriteAllText((Join-Path $script:State 'installation_path.txt'),$script:App)
     Step 9 'XONG'
-    Info 'MAIN + ROLES + FFMPEG + YTDLP + NODE: DA KIEM TRA THANH CONG'
+    Info 'MAIN + PYANNOTE + LICENSE: DA KIEM TRA THANH CONG'
+    Info 'FFmpeg/ffprobe/yt-dlp/Node.js: KHONG TU CAI, ban tu chuan bi.'
     Info ('App: ' + $script:App)
     Info 'Mo START_APP.bat trong thu muc app. Nhap LICENSE KEY do Admin cap.'
     Info 'Lan sau chi can UPDATE.bat (neu repo co Git).'
