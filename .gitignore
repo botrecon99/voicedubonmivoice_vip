@@ -142,3 +142,10 @@ Desktop.ini
 /GIT_BACKUP/
 /_backup/
 /_backups/
+
+# Installer-local runtime tools, cache and downloads
+/.tools/
+/installer_cache/
+/python-3.12*.exe
+/VC_redist*.exe
+/node.exe

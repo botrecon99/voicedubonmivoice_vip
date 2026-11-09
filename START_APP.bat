@@ -1,14 +1,17 @@
 @echo off
-setlocal EnableExtensions
+setlocal EnableExtensions DisableDelayedExpansion
 cd /d "%~dp0"
-chcp 65001 >nul
-if exist "venv\Scripts\python.exe" (
-  "venv\Scripts\python.exe" "modern_gui.py"
-) else if exist ".venv\Scripts\python.exe" (
-  ".venv\Scripts\python.exe" "modern_gui.py"
-) else (
-  echo [ERROR] Thieu main venv. Chay INSTALL_NEW_PC.bat truoc.
-  pause
-  exit /b 1
+title AI DUBBING STUDIO
+set "PATH=%~dp0;%~dp0.tools\node;%PATH%"
+if not exist "%~dp0venv\Scripts\python.exe" (
+    echo [ERROR] Chua co moi truong Python. Chay INSTALL_NEW_PC.bat.
+    pause
+    exit /b 1
 )
-if errorlevel 1 (echo [ERROR] App exited with error. & pause)
+"%~dp0venv\Scripts\python.exe" "%~dp0modern_gui.py"
+if errorlevel 1 (
+    echo [ERROR] App da gap loi. Xem thong bao phia tren.
+    pause
+    exit /b 1
+)
+exit /b 0
