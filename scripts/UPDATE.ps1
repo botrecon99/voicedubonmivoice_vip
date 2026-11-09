@@ -25,8 +25,13 @@ try {
     New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
     Start-Transcript -LiteralPath $Log | Out-Null; $script:TranscriptStarted=$true
     Say ('Log: ' + $Log)
+    # Find project root from this script's own location, without a quoted
+    # Windows argument ending in a backslash (which can corrupt the path).
+    if ([string]::IsNullOrWhiteSpace($SourceDir)) {
+        $SourceDir = Split-Path -Path $PSScriptRoot -Parent
+    }
     $script:AppDir = ''
-    if ($SourceDir -and (Test-Path -LiteralPath (Join-Path $SourceDir '.git'))) {
+    if ($SourceDir -and (Test-Path -LiteralPath (Join-Path -Path $SourceDir -ChildPath '.git'))) {
         $script:AppDir = (Resolve-Path -LiteralPath $SourceDir).Path
     } else {
         $record = Join-Path $StateDir 'installation_path.txt'
@@ -88,6 +93,10 @@ try {
     exit 0
 } catch {
     Write-Host ('[ERROR] ' + $_.Exception.Message) -ForegroundColor Red
+    # Print exact source line if another error appears on Windows.
+    if ($_.InvocationInfo -and $_.InvocationInfo.PositionMessage) {
+        Write-Host ('[DETAIL] ' + $_.InvocationInfo.PositionMessage) -ForegroundColor DarkYellow
+    }
     Write-Host ('[ERROR] Xem log: ' + $Log) -ForegroundColor Yellow
     if ($script:TranscriptStarted) { Stop-Transcript | Out-Null }
     exit 1
